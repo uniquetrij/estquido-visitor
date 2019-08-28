@@ -11,10 +11,12 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.VolleyError;
@@ -38,7 +40,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
+
     private static final String TAG = MainActivity.class.getName();
+    public static final int QR_REQUEST_CODE = 0;
+
+
     private FusedLocationProviderClient mFusedLocationClient;
     private AutoCompleteTextView tvSpotName;
     private Map<String, Object> spots;
@@ -60,6 +66,13 @@ public class MainActivity extends AppCompatActivity {
         This.APPLICATION.set(getApplication());
 
         tvSpotName = findViewById(R.id.tvSpotName);
+        tvSpotName.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                ((TextView) findViewById(R.id.textView)).setText("");
+                return false;
+            }
+        });
         btnIndoorDirections = findViewById(R.id.btnIndoorDirections);
         btnOutdoorDirections = findViewById(R.id.btnOutdoorDirections);
 
@@ -147,12 +160,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void btnIndoorDirectionsOnClick(View view) {
-        Intent intent = new Intent(MainActivity.this, NavigatorActivity.class);
-        startActivity(intent);
+        Intent intent = new Intent(getApplicationContext(), QRScannerActivity.class);
+        startActivityForResult(intent, QR_REQUEST_CODE);
+
+//        Intent intent = new Intent(MainActivity.this, NavigatorActivity.class);
+//        startActivity(intent);
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == QR_REQUEST_CODE) {
+
+            if (resultCode == RESULT_OK) {
+                String contents = data.getStringExtra("SCAN_RESULT");
+                Log.d(TAG, "QR" + contents);
+//                mReplicator.stop();
+                Log.d(TAG, "REPLICATOR " + "STOP");
+                Intent intent = new Intent(getApplicationContext(), NavigatorActivity.class);
+                startActivity(intent);
+            }
+        }
+        if (resultCode == RESULT_CANCELED) {
+            Log.d(TAG, "QR" + "CANCELLED");
+        }
+
     }
 
     public void btnSearchSpotOnCLick(View view) {
         Log.d(TAG, "CBL " + "CLICK");
+        ((TextView) findViewById(R.id.textView)).setText("");
         String spot = tvSpotName.getText().toString().trim();
         if (spots.containsKey(spot)) {
             btnOutdoorDirections.setVisibility(View.VISIBLE);
@@ -160,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
             String building = (String) ((Map<String, Object>) spots.get(spot)).get("building");
             Log.d(TAG, "CBL " + "building_" + This.GPS_CENTER.get() + "_" + building);
             This.BUILDING.set(building);
-
+            ((TextView) findViewById(R.id.textView)).setText("Destination is in building " + building);
             if (This.CBL_DATABASE.get() == null) {
                 This.CBL_DATABASE.set(new CBLService(This.Static.COUCHBASE_DATABASE_URL, This.Static.COUCHBASE_DATABASE, This.Static.COUCHBASE_USER, This.Static.COUCHBASE_PASS));
             }

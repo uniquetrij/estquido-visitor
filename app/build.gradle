@@ -52,3 +52,14 @@ dependencies {
     implementation 'com.journeyapps:zxing-android-embedded:3.6.0'
 
 }
+
+
+sceneform.asset('sampledata/arrow.fbx',
+        'default',
+        'sampledata/arrow.sfa',
+        'src/main/assets/arrow')
+
+sceneform.asset('sampledata/destination.fbx',
+        'default',
+        'sampledata/destination.sfa',
+        'src/main/assets/destination')

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.couchbase.lite.CouchbaseLiteException;
 import com.couchbase.lite.Database;
+import com.couchbase.lite.DatabaseConfiguration;
 import com.couchbase.lite.Document;
 import com.couchbase.lite.MutableArray;
 import com.couchbase.lite.MutableDocument;
@@ -72,11 +73,17 @@ public class NavigatorActivity extends AppCompatActivity {
     private Quaternion prevCamRotation = null;
     private String wayPointName = "wayPoint_";
 
+    private String center;
+    private String building;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_navigate);
+        setContentView(R.layout.activity_navigator);
 
+        Intent intent = getIntent();
+        center = This.GPS_CENTER.get();
+        building = This.BUILDING.get();
         initialiseDB();
 
         mArFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.checkpoints_fragment);
@@ -120,11 +127,11 @@ public class NavigatorActivity extends AppCompatActivity {
     private void initialiseDB() {
         try {
             database = This.CBL_DATABASE.get().getDatabase();
-            Document doc = database.getDocument("building_" + This.GPS_CENTER.get() + "_" + This.BUILDING.get());
+            Document doc = database.getDocument("building_" + center + "_" + building);
             Log.d("NAV DOC", doc.toMap().toString());
 
             if (doc == null) {
-                document = new MutableDocument("building_" + This.GPS_CENTER.get() + "_" + This.BUILDING.get());
+                document = new MutableDocument("building_" + center + "_" + building);
                 document.setValue("WayPoints", new ArrayList<Map<String, Object>>());
                 document.setValue("WayPointIDs", new ArrayList<Integer>(Arrays.asList(0)));
                 document.setValue("CheckPoints", new ArrayList<Map<String, Integer>>());
@@ -213,7 +220,7 @@ public class NavigatorActivity extends AppCompatActivity {
                                     }
                                 });
                             }
-                        }, 5000);
+                        }, 300);
 
                         AnchorNode anchorNode = new AnchorNode();
                         anchorNode.setAnchor(mAnchor);
@@ -281,15 +288,15 @@ public class NavigatorActivity extends AppCompatActivity {
         mWayPoints.clear();
 
 
-        boolean isPathExists = true;
+        boolean pathExists = true;
 
         for (WayPoint wp : wpList) {
             if (wp.getWayPointName().equalsIgnoreCase(src)) {
                 if (wp.getCheckpointsPath().keySet().isEmpty()) {
-                    isPathExists = false;
+                    pathExists = false;
                 } else {
                     if (!wp.getCheckpointsPath().keySet().contains(dst)) {
-                        isPathExists = false;
+                        pathExists = false;
                     }
 
                 }
@@ -297,11 +304,10 @@ public class NavigatorActivity extends AppCompatActivity {
             }
         }
         Log.d("NAV WPLIST", wpList.toString());
-        if (!isPathExists) {
+        if (!pathExists) {
             DijikstrasShortestPath dj = new DijikstrasShortestPath();
             wpList = dj.getShortestPath(wpList, src, dst);
         } else {
-
         }
 
         Set<WayPoint> oldWP = Collections.synchronizedSet(new LinkedHashSet<>(wpList));
@@ -380,7 +386,7 @@ public class NavigatorActivity extends AppCompatActivity {
         Collections.sort(finalWayPoint, Comparator.comparingLong(WayPoint::getId));
 
         mWayPoints.addAll(newWayPoints.values());
-        if (isPathExists) {
+        if (!pathExists) {
             persistWayPoints();
         }
 
@@ -436,9 +442,10 @@ public class NavigatorActivity extends AppCompatActivity {
 
             @Override
             public void onUpdate(ReplicatorChange change) {
+                Log.d(TAG, "CBL " + change.getStatus().getProgress());
 
             }
-        }, "building_" + This.GPS_CENTER.get() + "_" + This.BUILDING.get());
+        }, "building_" + This.GPS_CENTER.get() + "_" + building);
     }
 
 
